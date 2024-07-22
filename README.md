@@ -2,11 +2,11 @@
 APAD Team Project
 
 ### Team Members 
-- Tarun Chandrasekaran 
-- Aidan Townsend 
-- Brando Lezzana 
 - Devan Capps 
+- Tarun Chandrasekaran 
 - Rithvik Kanaad 
+- Brando Lezzana 
+- Aidan Townsend 
  
 ### Collaboration Tools
 - Trello 
