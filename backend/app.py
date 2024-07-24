@@ -3,13 +3,20 @@ from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from bson import ObjectId
+from dotenv import load_dotenv
 import os
+
+load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
 
 # Configuration
-app.config['MONGO_URI'] = 'mongodb://localhost:27017/haas_poc'
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key')
+# app.config['MONGO_URI'] = 'mongodb://localhost:27017/haas_poc'
+# app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key')
+
+# Configuration
+app.config['MONGO_URI'] = os.getenv('MONGO_URI')
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
 # Initialize extensions
 mongo = PyMongo(app)
