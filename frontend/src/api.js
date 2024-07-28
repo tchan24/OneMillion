@@ -7,11 +7,27 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  console.log('Making request to:', config.url);
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  console.error('Request error:', error);
+  return Promise.reject(error);
+});
+
+api.interceptors.response.use((response) => {
+  console.log('Received response:', response.status, response.data);
+  return response;
+}, (error) => {
+  console.error('Response error:', error);
+  if (error.response) {
+    console.error('Response data:', error.response.data);
+    console.error('Response status:', error.response.status);
+  }
+  return Promise.reject(error);
 });
 
 export const login = (username, password) => api.post('/login', { username, password });
