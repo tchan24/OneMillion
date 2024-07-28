@@ -19,11 +19,11 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
-# app.config['MONGO_URI'] = 'mongodb://localhost:27017/haas_poc'
-# app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key')
+app.config['MONGO_URI'] = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/?retryWrites=true&w=majority&appName=OneMillion'
+#app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key')
 
 # Configuration
-app.config['MONGO_URI'] = os.getenv('MONGO_URI')
+#app.config['MONGO_URI'] = os.getenv('MONGO_URI')
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
 # Initialize extensions
