@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Container } from '@mui/material';
 
-import Login from './components/Login';
-import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import ProjectManagement from './components/ProjectManagement';
-import ResourceManagement from './components/ResourceManagement';
+import Login from './components/login';
+import Dashboard from './components/dashboard';
 
 const theme = createTheme();
 
@@ -28,26 +25,20 @@ const App = () => {
       <CssBaseline />
       <Router>
         <Container>
-          <Switch>
-            <Route exact path="/">
-              {isAuthenticated ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
-            </Route>
-            <Route path="/login">
-              <Login onLogin={handleLogin} />
-            </Route>
-            <Route path="/register">
-              <Register />
-            </Route>
-            <Route path="/dashboard">
-              {isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Redirect to="/login" />}
-            </Route>
-            <Route path="/projects">
-              {isAuthenticated ? <ProjectManagement /> : <Redirect to="/login" />}
-            </Route>
-            <Route path="/resources">
-              {isAuthenticated ? <ResourceManagement /> : <Redirect to="/login" />}
-            </Route>
-          </Switch>
+          <Routes>
+            <Route 
+              path="/" 
+              element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/login" 
+              element={<Login onLogin={handleLogin} />} 
+            />
+            <Route 
+              path="/dashboard" 
+              element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} 
+            />
+          </Routes>
         </Container>
       </Router>
     </ThemeProvider>
