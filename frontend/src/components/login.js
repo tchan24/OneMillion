@@ -10,14 +10,25 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      console.log('Attempting to', isLogin ? 'login' : 'register');
+      console.log('Username:', username);
+      console.log('Password:', password);
+      
       const response = isLogin
         ? await login(username, password)
         : await register(username, password);
+      
+      console.log('Response:', response);
+      
       localStorage.setItem('token', response.data.access_token);
       onLogin();
     } catch (error) {
       console.error('Authentication error:', error);
-      alert('Authentication failed. Please try again.');
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+      alert('Authentication failed. Please check the console for more details.');
     }
   };
 

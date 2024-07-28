@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from bson import ObjectId
+from flask_cors import CORS
 from dotenv import load_dotenv
 from pathlib import Path
 import os
@@ -10,6 +10,7 @@ import os
 load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Configuration
 # app.config['MONGO_URI'] = 'mongodb://localhost:27017/haas_poc'
@@ -25,22 +26,30 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 # User routes
+mongo = PyMongo(app)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
+
 @app.route('/api/register', methods=['POST'])
 def register():
+    print("Received registration request")
     users = mongo.db.users
     username = request.json.get('username')
     password = request.json.get('password')
     
     if users.find_one({'username': username}):
+        print(f"Username {username} already exists")
         return jsonify({'message': 'Username already exists'}), 400
     
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     user_id = users.insert_one({'username': username, 'password': hashed_password}).inserted_id
     
+    print(f"Registered new user: {username}")
     return jsonify({'message': 'User registered successfully', 'user_id': str(user_id)}), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
+    print("Received login request")
     users = mongo.db.users
     username = request.json.get('username')
     password = request.json.get('password')
@@ -49,8 +58,10 @@ def login():
     
     if user and bcrypt.check_password_hash(user['password'], password):
         access_token = create_access_token(identity=str(user['_id']))
+        print(f"Login successful for user: {username}")
         return jsonify({'access_token': access_token}), 200
     
+    print(f"Login failed for user: {username}")
     return jsonify({'message': 'Invalid username or password'}), 401
 
 # Project routes
