@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 
+# Import custom modules for database interactions
+# Adding imports
+import userDB
+import projectsDB
+import hardwareDB
+
 load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
