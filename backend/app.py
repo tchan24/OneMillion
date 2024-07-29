@@ -4,14 +4,17 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
 from dotenv import load_dotenv
-from pathlib import Path
 import os
+import logging
 
 # Import custom modules for database interactions
 # Adding imports
 import userDB
 import projectsDB
 import hardwareDB
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -32,10 +35,6 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 # User routes
-mongo = PyMongo(app)
-bcrypt = Bcrypt(app)
-jwt = JWTManager(app)
-
 @app.route('/api/register', methods=['POST'])
 def register():
     print("Received registration request")
