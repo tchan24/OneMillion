@@ -6,12 +6,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import logging
-
-# Import custom modules for database interactions
-# Adding imports
-import userDB
-import projectsDB
-import hardwareDB
+from pymongo.errors import ConnectionFailure
+from pymongo import MongoClient
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -22,39 +18,69 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
-app.config['MONGO_URI'] = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/?retryWrites=true&w=majority&appName=OneMillion'
-#app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key')
+mongo_uri = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/haaspoc?retryWrites=true&w=majority&appName=OneMillion'
+jwt_secret_key = 'OneMillion100Beers'
 
-# Configuration
-#app.config['MONGO_URI'] = os.getenv('MONGO_URI')
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.logger.info(f"MONGO_URI: {mongo_uri}")
+app.logger.info(f"JWT_SECRET_KEY is set: {'Yes' if jwt_secret_key else 'No'}")
+
+if not mongo_uri:
+    raise ValueError("MONGO_URI is not set. Please check your .env file.")
+
+app.config['MONGO_URI'] = mongo_uri
+app.config['JWT_SECRET_KEY'] = jwt_secret_key
 
 # Initialize extensions
-mongo = PyMongo(app)
+mongo = None
+try:
+    # Use MongoClient directly instead of PyMongo
+    client = MongoClient(mongo_uri)
+    db = client.get_database('haas_poc')  # Specify the database name here
+    # Test the connection
+    db.command('ping')
+    app.logger.info("MongoDB connection successful")
+    mongo = PyMongo(app)
+except ConnectionFailure as e:
+    app.logger.error(f"MongoDB connection failed: {str(e)}")
+    raise
+except Exception as e:
+    app.logger.error(f"Unexpected error when connecting to MongoDB: {str(e)}")
+    raise
+
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 # User routes
 @app.route('/api/register', methods=['POST'])
 def register():
-    print("Received registration request")
+    app.logger.info("Received registration request")
+    app.logger.info(f"Request JSON: {request.json}")
+    if not mongo or not mongo.db:
+        app.logger.error("MongoDB connection is not available")
+        return jsonify({'message': 'Database connection error'}), 500
+    
     users = mongo.db.users
     username = request.json.get('username')
     password = request.json.get('password')
     
     if users.find_one({'username': username}):
-        print(f"Username {username} already exists")
+        app.logger.info(f"Username {username} already exists")
         return jsonify({'message': 'Username already exists'}), 400
     
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     user_id = users.insert_one({'username': username, 'password': hashed_password}).inserted_id
     
-    print(f"Registered new user: {username}")
+    app.logger.info(f"Registered new user: {username}")
     return jsonify({'message': 'User registered successfully', 'user_id': str(user_id)}), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    print("Received login request")
+    app.logger.info("Received login request")
+    app.logger.info(f"Request JSON: {request.json}")    
+    if not mongo or not mongo.db:
+        app.logger.error("MongoDB connection is not available")
+        return jsonify({'message': 'Database connection error'}), 500
+    
     users = mongo.db.users
     username = request.json.get('username')
     password = request.json.get('password')
@@ -63,10 +89,10 @@ def login():
     
     if user and bcrypt.check_password_hash(user['password'], password):
         access_token = create_access_token(identity=str(user['_id']))
-        print(f"Login successful for user: {username}")
+        app.logger.info(f"Login successful for user: {username}")
         return jsonify({'access_token': access_token}), 200
     
-    print(f"Login failed for user: {username}")
+    app.logger.info(f"Login failed for user: {username}")
     return jsonify({'message': 'Invalid username or password'}), 401
 
 # Project routes
