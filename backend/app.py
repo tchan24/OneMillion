@@ -6,7 +6,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import logging
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo import MongoClient
 
 # Set up logging
@@ -47,6 +47,8 @@ except Exception as e:
     app.logger.error(f"Unexpected error when connecting to MongoDB: {str(e)}")
     raise
 
+# Initialize extensions
+mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
@@ -55,45 +57,61 @@ jwt = JWTManager(app)
 def register():
     app.logger.info("Received registration request")
     app.logger.info(f"Request JSON: {request.json}")
-    if not mongo or not mongo.db:
-        app.logger.error("MongoDB connection is not available")
-        return jsonify({'message': 'Database connection error'}), 500
     
-    users = mongo.db.users
-    username = request.json.get('username')
-    password = request.json.get('password')
+    try:
+        users = mongo.db.users
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        if not username or not password:
+            return jsonify({'message': 'Username and password are required'}), 400
+        
+        if users.find_one({'username': username}):
+            app.logger.info(f"Username {username} already exists")
+            return jsonify({'message': 'Username already exists'}), 400
+        
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        user_id = users.insert_one({'username': username, 'password': hashed_password}).inserted_id
+        
+        app.logger.info(f"Registered new user: {username}")
+        return jsonify({'message': 'User registered successfully', 'user_id': str(user_id)}), 201
     
-    if users.find_one({'username': username}):
-        app.logger.info(f"Username {username} already exists")
-        return jsonify({'message': 'Username already exists'}), 400
-    
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    user_id = users.insert_one({'username': username, 'password': hashed_password}).inserted_id
-    
-    app.logger.info(f"Registered new user: {username}")
-    return jsonify({'message': 'User registered successfully', 'user_id': str(user_id)}), 201
+    except OperationFailure as e:
+        app.logger.error(f"Database operation failed: {str(e)}")
+        return jsonify({'message': 'Registration failed due to a database error'}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error during registration: {str(e)}")
+        return jsonify({'message': 'Registration failed due to an unexpected error'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
     app.logger.info("Received login request")
-    app.logger.info(f"Request JSON: {request.json}")    
-    if not mongo or not mongo.db:
-        app.logger.error("MongoDB connection is not available")
-        return jsonify({'message': 'Database connection error'}), 500
+    app.logger.info(f"Request JSON: {request.json}")
     
-    users = mongo.db.users
-    username = request.json.get('username')
-    password = request.json.get('password')
+    try:
+        users = mongo.db.users
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        if not username or not password:
+            return jsonify({'message': 'Username and password are required'}), 400
+        
+        user = users.find_one({'username': username})
+        
+        if user and bcrypt.check_password_hash(user['password'], password):
+            access_token = create_access_token(identity=str(user['_id']))
+            app.logger.info(f"Login successful for user: {username}")
+            return jsonify({'access_token': access_token}), 200
+        
+        app.logger.info(f"Login failed for user: {username}")
+        return jsonify({'message': 'Invalid username or password'}), 401
     
-    user = users.find_one({'username': username})
-    
-    if user and bcrypt.check_password_hash(user['password'], password):
-        access_token = create_access_token(identity=str(user['_id']))
-        app.logger.info(f"Login successful for user: {username}")
-        return jsonify({'access_token': access_token}), 200
-    
-    app.logger.info(f"Login failed for user: {username}")
-    return jsonify({'message': 'Invalid username or password'}), 401
+    except OperationFailure as e:
+        app.logger.error(f"Database operation failed: {str(e)}")
+        return jsonify({'message': 'Login failed due to a database error'}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error during login: {str(e)}")
+        return jsonify({'message': 'Login failed due to an unexpected error'}), 500
 
 # Project routes
 @app.route('/api/projects', methods=['POST'])
