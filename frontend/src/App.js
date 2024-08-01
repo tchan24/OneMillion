@@ -41,11 +41,11 @@ const App = () => {
           />
           <Route 
             path="/projects" 
-            element={isAuthenticated ? <ProjectManagement /> : <Navigate to="/login" />} 
+            element={isAuthenticated ? <ProjectManagement onLogout={handleLogout} /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/resources" 
-            element={isAuthenticated ? <ResourceManagement /> : <Navigate to="/login" />} 
+            element={isAuthenticated ? <ResourceManagement onLogout={handleLogout} /> : <Navigate to="/login" />} 
           />
         </Routes>
       </Router>

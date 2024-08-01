@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getResources, addResource, checkoutResources, checkinResources } from '../api';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper } from '@mui/material';
+import Navbar from './navbar';
 
-const ResourceManagement = () => {
+const ResourceManagement = ({ onLogout }) => {
   const [resources, setResources] = useState([]);
   const [newResource, setNewResource] = useState({ name: '', capacity: 0 });
   const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0 });
@@ -53,45 +55,84 @@ const ResourceManagement = () => {
   };
 
   return (
-    <div>
-      <h2>Resource Management</h2>
-      <form onSubmit={handleAddResource}>
-        <input
-          type="text"
-          placeholder="Resource Name"
-          value={newResource.name}
-          onChange={(e) => setNewResource({ ...newResource, name: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Capacity"
-          value={newResource.capacity}
-          onChange={(e) => setNewResource({ ...newResource, capacity: parseInt(e.target.value) })}
-        />
-        <button type="submit">Add Resource</button>
-      </form>
-      <form onSubmit={handleCheckout}>
-        <input
-          type="text"
-          placeholder="Hardware Set"
-          value={checkoutData.hw_set}
-          onChange={(e) => setCheckoutData({ ...checkoutData, hw_set: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Quantity"
-          value={checkoutData.quantity}
-          onChange={(e) => setCheckoutData({ ...checkoutData, quantity: parseInt(e.target.value) })}
-        />
-        <button type="submit">Checkout</button>
-        <button onClick={handleCheckin}>Check In</button>
-      </form>
-      <ul>
-        {resources.map(resource => (
-          <li key={resource._id}>{resource.name} - Available: {resource.available}/{resource.capacity}</li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <Navbar onLogout={onLogout} />
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Resource Management
+        </Typography>
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Add New Resource
+          </Typography>
+          <Box component="form" onSubmit={handleAddResource} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Resource Name"
+              variant="outlined"
+              value={newResource.name}
+              onChange={(e) => setNewResource({ ...newResource, name: e.target.value })}
+              required
+            />
+            <TextField
+              label="Capacity"
+              type="number"
+              variant="outlined"
+              value={newResource.capacity}
+              onChange={(e) => setNewResource({ ...newResource, capacity: parseInt(e.target.value) })}
+              required
+            />
+            <Button type="submit" variant="contained" color="primary">
+              Add Resource
+            </Button>
+          </Box>
+        </Paper>
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Checkout/Check-in Resources
+          </Typography>
+          <Box component="form" onSubmit={handleCheckout} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Hardware Set"
+              variant="outlined"
+              value={checkoutData.hw_set}
+              onChange={(e) => setCheckoutData({ ...checkoutData, hw_set: e.target.value })}
+              required
+            />
+            <TextField
+              label="Quantity"
+              type="number"
+              variant="outlined"
+              value={checkoutData.quantity}
+              onChange={(e) => setCheckoutData({ ...checkoutData, quantity: parseInt(e.target.value) })}
+              required
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button type="submit" variant="contained" color="primary">
+                Checkout
+              </Button>
+              <Button onClick={handleCheckin} variant="contained" color="secondary">
+                Check In
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+        <Paper elevation={3} sx={{ p: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Available Resources
+          </Typography>
+          <List>
+            {resources.map(resource => (
+              <ListItem key={resource._id}>
+                <ListItemText 
+                  primary={resource.name} 
+                  secondary={`Available: ${resource.available}/${resource.capacity}`} 
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      </Container>
+    </>
   );
 };
 
