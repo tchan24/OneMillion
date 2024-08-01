@@ -143,6 +143,25 @@ def get_projects():
     return jsonify([{**project, '_id': str(project['_id'])} for project in user_projects]), 200
 
 # Resource routes
+@app.route('/api/resources', methods=['POST'])
+@jwt_required()
+def add_resource():
+    resources = mongo.db.resources
+    name = request.json.get('name')
+    capacity = request.json.get('capacity')
+    
+    if not name or capacity is None:
+        return jsonify({'message': 'Name and capacity are required'}), 400
+    
+    resource = {
+        'name': name,
+        'capacity': capacity,
+        'available': capacity  # Initially, all resources are available
+    }
+    
+    result = resources.insert_one(resource)
+    return jsonify({'message': 'Resource added successfully', 'resource_id': str(result.inserted_id)}), 201
+
 @app.route('/api/resources', methods=['GET'])
 @jwt_required()
 def get_resources():
