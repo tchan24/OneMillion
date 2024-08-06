@@ -15,7 +15,8 @@ logging.basicConfig(level=logging.DEBUG)
 load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+#CORS(app)  # Enable CORS for all routes
+CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}})
 
 # Configuration
 mongo_uri = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/haaspoc?retryWrites=true&w=majority&appName=OneMillion'
