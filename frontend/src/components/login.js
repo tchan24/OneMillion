@@ -14,6 +14,7 @@ const Login = ({ onLogin }) => {
     try {
       if (isLogin) {
         const response = await login(username, password);
+        console.log('Login response:', response);
         localStorage.setItem('token', response.data.access_token);
         onLogin();
         navigate('/dashboard');
