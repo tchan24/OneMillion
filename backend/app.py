@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -86,33 +86,43 @@ def register():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    app.logger.info("Received login request")
-    app.logger.info(f"Request JSON: {request.json}")
+    if request.method == 'OPTIONS':
+        return build_preflight_response()
+    elif request.method == 'POST':
+        app.logger.info("Received login request")
+        app.logger.info(f"Request JSON: {request.json}")
     
-    try:
-        users = mongo.db.users
-        username = request.json.get('username')
-        password = request.json.get('password')
+        try:
+            users = mongo.db.users
+            username = request.json.get('username')
+            password = request.json.get('password')
         
-        if not username or not password:
-            return jsonify({'message': 'Username and password are required'}), 400
+            if not username or not password:
+                return jsonify({'message': 'Username and password are required'}), 400
         
-        user = users.find_one({'username': username})
+            user = users.find_one({'username': username})
         
-        if user and bcrypt.check_password_hash(user['password'], password):
-            access_token = create_access_token(identity=str(user['_id']))
-            app.logger.info(f"Login successful for user: {username}")
-            return jsonify({'access_token': access_token}), 200
+            if user and bcrypt.check_password_hash(user['password'], password):
+                access_token = create_access_token(identity=str(user['_id']))
+                app.logger.info(f"Login successful for user: {username}")
+                return jsonify({'access_token': access_token}), 200
         
-        app.logger.info(f"Login failed for user: {username}")
-        return jsonify({'message': 'Invalid username or password'}), 401
+            app.logger.info(f"Login failed for user: {username}")
+            return jsonify({'message': 'Invalid username or password'}), 401
     
-    except OperationFailure as e:
-        app.logger.error(f"Database operation failed: {str(e)}")
-        return jsonify({'message': 'Login failed due to a database error'}), 500
-    except Exception as e:
-        app.logger.error(f"Unexpected error during login: {str(e)}")
-        return jsonify({'message': 'Login failed due to an unexpected error'}), 500
+        except OperationFailure as e:
+            app.logger.error(f"Database operation failed: {str(e)}")
+            return jsonify({'message': 'Login failed due to a database error'}), 500
+        except Exception as e:
+            app.logger.error(f"Unexpected error during login: {str(e)}")
+            return jsonify({'message': 'Login failed due to an unexpected error'}), 500
+
+def build_preflight_response():
+    response = make_response()
+    response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
+    response.headers.add('Access-Control-Allow-Headers', "*")
+    response.headers.add('Access-Control-Allow-Methods', "*")
+    return response
 
 # Project routes
 @app.route('/api/projects', methods=['POST'])
