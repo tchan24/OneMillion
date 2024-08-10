@@ -165,3 +165,4 @@ backend/.DS_Store
 
 # Local Netlify folder
 .netlify
+backend/backend.env
