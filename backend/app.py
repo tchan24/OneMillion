@@ -113,41 +113,6 @@ def login():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 401
 
-'''
-@app.route('/api/login', methods=['POST'])
-def login():
-    if request.method == 'OPTIONS':
-        return build_preflight_response()
-    elif request.method == 'POST':
-        app.logger.info("Received login request")
-        app.logger.info(f"Request JSON: {request.json}")
-    
-        try:
-            users = mongo.db.users
-            username = request.json.get('username')
-            password = request.json.get('password')
-        
-            if not username or not password:
-                return jsonify({'message': 'Username and password are required'}), 400
-        
-            user = users.find_one({'username': username})
-        
-            if user and bcrypt.check_password_hash(user['password'], password):
-                access_token = create_access_token(identity=str(user['_id']))
-                app.logger.info(f"Login successful for user: {username}")
-                return jsonify({'access_token': access_token}), 200
-        
-            app.logger.info(f"Login failed for user: {username}")
-            return jsonify({'message': 'Invalid username or password'}), 401
-    
-        except OperationFailure as e:
-            app.logger.error(f"Database operation failed: {str(e)}")
-            return jsonify({'message': 'Login failed due to a database error'}), 500
-        except Exception as e:
-            app.logger.error(f"Unexpected error during login: {str(e)}")
-            return jsonify({'message': 'Login failed due to an unexpected error'}), 500
-'''
-
 def build_preflight_response():
     response = make_response()
     response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
@@ -187,60 +152,87 @@ def get_projects():
 # Resource routes
 @app.route('/api/resources', methods=['POST'])
 @jwt_required()
-def add_resource():
-    resources = mongo.db.resources
-    name = request.json.get('name')
-    capacity = request.json.get('capacity')
-    
-    if not name or capacity is None:
-        return jsonify({'message': 'Name and capacity are required'}), 400
-    
-    resource = {
-        'name': name,
-        'capacity': capacity,
-        'available': capacity  # Initially, all resources are available
+def create_resource():
+    data = request.json
+    new_resource = {
+        'name': data['name'],
+        'capacity': data['capacity'],
+        'available': data['capacity']
     }
-    
-    result = resources.insert_one(resource)
-    return jsonify({'message': 'Resource added successfully', 'resource_id': str(result.inserted_id)}), 201
+    result = mongo.db.resources.insert_one(new_resource)
+    return jsonify({'message': 'Resource created', 'id': str(result.inserted_id)}), 201
 
 @app.route('/api/resources', methods=['GET'])
 @jwt_required()
 def get_resources():
-    resources = mongo.db.resources
-    all_resources = list(resources.find())
-    
-    return jsonify([{**resource, '_id': str(resource['_id'])} for resource in all_resources]), 200
+    resources = mongo.db.resources.find()
+    return jsonify([{
+        'id': str(resource['_id']),
+        'name': resource['name'],
+        'capacity': resource['capacity'],
+        'available': resource['available']
+    } for resource in resources])
 
 @app.route('/api/resources/checkout', methods=['POST'])
 @jwt_required()
-def checkout_resources():
-    resources = mongo.db.resources
-    hw_set = request.json.get('hw_set')
-    quantity = request.json.get('quantity')
+def checkout_resource():
+    data = request.json
+    resource = mongo.db.resources.find_one({'name': data['name']})
+    if not resource:
+        return jsonify({'message': 'Resource not found'}), 404
+    if resource['available'] < data['quantity']:
+        return jsonify({'message': 'Not enough resources available'}), 400
     
-    resource = resources.find_one({'name': hw_set})
+    mongo.db.resources.update_one(
+        {'_id': resource['_id']},
+        {'$inc': {'available': -data['quantity']}}
+    )
     
-    if not resource or resource['available'] < quantity:
-        return jsonify({'message': 'Insufficient resources available'}), 400
+    # Record the checkout in a separate collection
+    mongo.db.checkouts.insert_one({
+        'user_id': get_jwt_identity(),
+        'resource_id': resource['_id'],
+        'project_id': data['project_id'],
+        'quantity': data['quantity']
+    })
     
-    resources.update_one({'name': hw_set}, {'$inc': {'available': -quantity}})
-    return jsonify({'message': 'Resources checked out successfully'}), 200
+    return jsonify({'message': 'Checkout successful'}), 200
 
 @app.route('/api/resources/checkin', methods=['POST'])
 @jwt_required()
-def checkin_resources():
-    resources = mongo.db.resources
-    hw_set = request.json.get('hw_set')
-    quantity = request.json.get('quantity')
-    
-    resource = resources.find_one({'name': hw_set})
-    
+def checkin_resource():
+    data = request.json
+    resource = mongo.db.resources.find_one({'name': data['name']})
     if not resource:
-        return jsonify({'message': 'Invalid resource'}), 400
+        return jsonify({'message': 'Resource not found'}), 404
     
-    resources.update_one({'name': hw_set}, {'$inc': {'available': quantity}})
-    return jsonify({'message': 'Resources checked in successfully'}), 200
+    mongo.db.resources.update_one(
+        {'_id': resource['_id']},
+        {'$inc': {'available': data['quantity']}}
+    )
+    
+    # Update or remove the checkout record
+    mongo.db.checkouts.delete_one({
+        'user_id': get_jwt_identity(),
+        'resource_id': resource['_id'],
+        'project_id': data['project_id'],
+        'quantity': data['quantity']
+    })
+    
+    return jsonify({'message': 'Check-in successful'}), 200
+
+@app.route('/api/projects/<project_id>/resources', methods=['GET'])
+@jwt_required()
+def get_project_resources(project_id):
+    checkouts = mongo.db.checkouts.find({'project_id': project_id, 'user_id': get_jwt_identity()})
+    project_resources = []
+    for checkout in checkouts:
+        resource = mongo.db.resources.find_one({'_id': checkout['resource_id']})
+        project_resources.append({
+            'name': resource['name'],
+            'checked_out': checkout['quantity']
+        })
+    return jsonify(project_resources)
 
 if __name__ == '__main__':
     app.run(debug=False)
