@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { getProjects, createProject } from '../api';
-import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper } from '@mui/material';
+import { getProjects, createProject, getAllProjects, joinProject } from '../api';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Select, MenuItem } from '@mui/material';
 import Navbar from './navbar';
 
 const ProjectManagement = ({ onLogout }) => {
   const [projects, setProjects] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [newProject, setNewProject] = useState({ name: '', description: '', projectID: '' });
+  const [selectedProject, setSelectedProject] = useState('');
 
   useEffect(() => {
     fetchProjects();
+    fetchAllProjects();
   }, []);
 
   const fetchProjects = async () => {
@@ -20,14 +23,34 @@ const ProjectManagement = ({ onLogout }) => {
     }
   };
 
+  const fetchAllProjects = async () => {
+    try {
+      const response = await getAllProjects();
+      setAllProjects(response.data);
+    } catch (error) {
+      console.error('Error fetching all projects:', error);
+    }
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
     try {
       await createProject(newProject);
       setNewProject({ name: '', description: '', projectID: '' });
       fetchProjects();
+      fetchAllProjects();
     } catch (error) {
       console.error('Error creating project:', error);
+    }
+  };
+
+  const handleJoinProject = async () => {
+    try {
+      await joinProject(selectedProject);
+      fetchProjects();
+      setSelectedProject('');
+    } catch (error) {
+      console.error('Error joining project:', error);
     }
   };
 
@@ -69,9 +92,30 @@ const ProjectManagement = ({ onLogout }) => {
             </Button>
           </Box>
         </Paper>
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Join Existing Project
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              displayEmpty
+              fullWidth
+            >
+              <MenuItem value="" disabled>Select a project to join</MenuItem>
+              {allProjects.map((project) => (
+                <MenuItem key={project._id} value={project._id}>{project.name}</MenuItem>
+              ))}
+            </Select>
+            <Button onClick={handleJoinProject} variant="contained" color="secondary" disabled={!selectedProject}>
+              Join Project
+            </Button>
+          </Box>
+        </Paper>
         <Paper elevation={3} sx={{ p: 3 }}>
           <Typography variant="h6" component="h2" gutterBottom>
-            Existing Projects
+            Your Projects
           </Typography>
           <List>
             {projects.map(project => (

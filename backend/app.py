@@ -197,18 +197,43 @@ def checkin_resource():
     
     return jsonify({'message': 'Check-in successful'}), 200
 
+@app.route('/api/all-projects', methods=['GET'])
+@jwt_required()
+def get_all_projects():
+    projects = mongo.db.projects
+    all_projects = list(projects.find())
+    return jsonify([{**project, '_id': str(project['_id'])} for project in all_projects]), 200
+
+@app.route('/api/join-project', methods=['POST'])
+@jwt_required()
+def join_project():
+    user_id = get_jwt_identity()
+    project_id = request.json.get('project_id')
+    
+    project = mongo.db.projects.find_one({'_id': project_id})
+    if not project:
+        return jsonify({'message': 'Project not found'}), 404
+    
+    if user_id not in project.get('members', []):
+        mongo.db.projects.update_one(
+            {'_id': project_id},
+            {'$addToSet': {'members': user_id}}
+        )
+    
+    return jsonify({'message': 'Joined project successfully'}), 200
+
 @app.route('/api/projects/<project_id>/resources', methods=['GET'])
 @jwt_required()
 def get_project_resources(project_id):
-    checkouts = mongo.db.checkouts.find({'project_id': project_id, 'user_id': get_jwt_identity()})
-    project_resources = []
+    checkouts = mongo.db.checkouts.find({'project_id': project_id})
+    project_resources = {}
     for checkout in checkouts:
         resource = mongo.db.resources.find_one({'_id': checkout['resource_id']})
-        project_resources.append({
-            'name': resource['name'],
-            'checked_out': checkout['quantity']
-        })
-    return jsonify(project_resources)
+        if resource['name'] not in project_resources:
+            project_resources[resource['name']] = 0
+        project_resources[resource['name']] += checkout['quantity']
+    
+    return jsonify([{'name': name, 'checked_out': quantity} for name, quantity in project_resources.items()]), 200
 
 if __name__ == '__main__':
     app.run(debug=False)

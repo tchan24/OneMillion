@@ -1,9 +1,6 @@
 import axios from 'axios';
 
-//const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-//const API_URL = process.env.REACT_APP_API_URL || 'https://onemillionhaas-b249dc0f125a.herokuapp.com/';
 const API_URL = 'https://onemillionhaas-b249dc0f125a.herokuapp.com/api';
-
 
 const api = axios.create({
   baseURL: API_URL,
@@ -25,11 +22,12 @@ api.interceptors.request.use((config) => {
 export const login = (username, password) => api.post('/login', { username, password });
 export const register = (username, password) => api.post('/register', { username, password });
 export const getProjects = () => api.get('/projects');
+export const getAllProjects = () => api.get('/all-projects');
 export const createProject = (project) => api.post('/projects', project);
+export const joinProject = (projectId) => api.post('/join-project', { project_id: projectId });
 export const getResources = () => api.get('/resources');
-export const createResource = (name, capacity) => api.post('/resources', { name, capacity });
-export const checkoutResources = (name, quantity, project_id) => api.post('/resources/checkout', { name, quantity, project_id });
-export const checkinResources = (name, quantity, project_id) => api.post('/resources/checkin', { name, quantity, project_id });
+export const checkoutResources = (hw_set, quantity, project_id) => api.post('/resources/checkout', { hw_set, quantity, project_id });
+export const checkinResources = (hw_set, quantity, project_id) => api.post('/resources/checkin', { hw_set, quantity, project_id });
 export const getProjectResources = (project_id) => api.get(`/projects/${project_id}/resources`);
 
 export default api;

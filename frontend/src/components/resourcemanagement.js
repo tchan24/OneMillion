@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { getResources, checkoutResources, checkinResources } from '../api';
-import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Alert } from '@mui/material';
+import { getResources, checkoutResources, checkinResources, getProjectResources } from '../api';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Alert, Select, MenuItem } from '@mui/material';
 import Navbar from './navbar';
 
 const ResourceManagement = ({ onLogout }) => {
   const [resources, setResources] = useState([]);
   const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0, project_id: '' });
   const [alert, setAlert] = useState({ show: false, message: '', severity: 'info' });
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [projectResources, setProjectResources] = useState([]);
 
   useEffect(() => {
     fetchResources();
+    fetchProjects();
   }, []);
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchProjectResources(selectedProject);
+    }
+  }, [selectedProject]);
 
   const fetchResources = async () => {
     try {
@@ -22,12 +32,31 @@ const ResourceManagement = ({ onLogout }) => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const response = await getProjects();
+      setProjects(response.data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchProjectResources = async (projectId) => {
+    try {
+      const response = await getProjectResources(projectId);
+      setProjectResources(response.data);
+    } catch (error) {
+      console.error('Error fetching project resources:', error);
+    }
+  };
+
   const handleCheckout = async (e) => {
     e.preventDefault();
     try {
-      await checkoutResources(checkoutData.hw_set, checkoutData.quantity, checkoutData.project_id);
-      setCheckoutData({ hw_set: '', quantity: 0, project_id: '' });
+      await checkoutResources(checkoutData.hw_set, checkoutData.quantity, selectedProject);
+      setCheckoutData({ hw_set: '', quantity: 0 });
       fetchResources();
+      fetchProjectResources(selectedProject);
       showAlert('Resources checked out successfully', 'success');
     } catch (error) {
       console.error('Error checking out resource:', error);
@@ -38,9 +67,10 @@ const ResourceManagement = ({ onLogout }) => {
   const handleCheckin = async (e) => {
     e.preventDefault();
     try {
-      await checkinResources(checkoutData.hw_set, checkoutData.quantity, checkoutData.project_id);
-      setCheckoutData({ hw_set: '', quantity: 0, project_id: '' });
+      await checkinResources(checkoutData.hw_set, checkoutData.quantity, selectedProject);
+      setCheckoutData({ hw_set: '', quantity: 0 });
       fetchResources();
+      fetchProjectResources(selectedProject);
       showAlert('Resources checked in successfully', 'success');
     } catch (error) {
       console.error('Error checking in resource:', error);
@@ -67,40 +97,54 @@ const ResourceManagement = ({ onLogout }) => {
         </Typography>
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" component="h2" gutterBottom>
+            Available Resources
+          </Typography>
+          <List>
+            {resources.map(resource => (
+              <ListItem key={resource.id}>
+                <ListItemText 
+                  primary={resource.name} 
+                  secondary={`Available: ${resource.available}/${resource.capacity}`} 
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
             Checkout/Check-in Resources
           </Typography>
           <Box component="form" onSubmit={handleCheckout} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              select
-              label="Hardware Set"
-              variant="outlined"
+            <Select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              displayEmpty
+              fullWidth
+              required
+            >
+              <MenuItem value="" disabled>Select a project</MenuItem>
+              {projects.map((project) => (
+                <MenuItem key={project._id} value={project._id}>{project.name}</MenuItem>
+              ))}
+            </Select>
+            <Select
               value={checkoutData.hw_set}
               onChange={(e) => setCheckoutData({ ...checkoutData, hw_set: e.target.value })}
+              displayEmpty
+              fullWidth
               required
-              SelectProps={{
-                native: true,
-              }}
             >
-              <option value="">Select a hardware set</option>
+              <MenuItem value="" disabled>Select a hardware set</MenuItem>
               {resources.map((resource) => (
-                <option key={resource._id} value={resource.name}>
-                  {resource.name}
-                </option>
+                <MenuItem key={resource.id} value={resource.name}>{resource.name}</MenuItem>
               ))}
-            </TextField>
+            </Select>
             <TextField
               label="Quantity"
               type="number"
               variant="outlined"
               value={checkoutData.quantity}
               onChange={(e) => setCheckoutData({ ...checkoutData, quantity: parseInt(e.target.value) })}
-              required
-            />
-            <TextField
-              label="Project ID"
-              variant="outlined"
-              value={checkoutData.project_id}
-              onChange={(e) => setCheckoutData({ ...checkoutData, project_id: e.target.value })}
               required
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
@@ -113,21 +157,23 @@ const ResourceManagement = ({ onLogout }) => {
             </Box>
           </Box>
         </Paper>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h6" component="h2" gutterBottom>
-            Available Resources
-          </Typography>
-          <List>
-            {resources.map(resource => (
-              <ListItem key={resource._id}>
-                <ListItemText 
-                  primary={resource.name} 
-                  secondary={`Available: ${resource.available}/${resource.capacity}`} 
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
+        {selectedProject && (
+          <Paper elevation={3} sx={{ p: 3 }}>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Project Resources
+            </Typography>
+            <List>
+              {projectResources.map(resource => (
+                <ListItem key={resource.name}>
+                  <ListItemText 
+                    primary={resource.name} 
+                    secondary={`Checked out: ${resource.checked_out}`} 
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
       </Container>
     </>
   );
