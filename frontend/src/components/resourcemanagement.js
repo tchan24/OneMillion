@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getResources, checkoutResources, checkinResources, getProjectResources } from '../api';
+import { getResources, checkoutResources, checkinResources, getProjectResources, getProjects } from '../api';
 import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Alert, Select, MenuItem } from '@mui/material';
 import Navbar from './navbar';
 
