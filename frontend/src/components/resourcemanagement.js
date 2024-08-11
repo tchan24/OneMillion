@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { getResources, addResource, checkoutResources, checkinResources } from '../api';
+import { getResources, checkoutResources, checkinResources } from '../api';
 import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Alert } from '@mui/material';
 import Navbar from './navbar';
 
 const ResourceManagement = ({ onLogout }) => {
   const [resources, setResources] = useState([]);
-  const [newResource, setNewResource] = useState({ name: '', capacity: 0 });
   const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0, project_id: '' });
   const [alert, setAlert] = useState({ show: false, message: '', severity: 'info' });
 
@@ -20,19 +19,6 @@ const ResourceManagement = ({ onLogout }) => {
     } catch (error) {
       console.error('Error fetching resources:', error);
       showAlert('Error fetching resources', 'error');
-    }
-  };
-
-  const handleAddResource = async (e) => {
-    e.preventDefault();
-    try {
-      await addResource(newResource);
-      setNewResource({ name: '', capacity: 0 });
-      fetchResources();
-      showAlert('Resource added successfully', 'success');
-    } catch (error) {
-      console.error('Error adding resource:', error);
-      showAlert('Error adding resource', 'error');
     }
   };
 
@@ -81,41 +67,27 @@ const ResourceManagement = ({ onLogout }) => {
         </Typography>
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" component="h2" gutterBottom>
-            Add New Resource
-          </Typography>
-          <Box component="form" onSubmit={handleAddResource} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Resource Name"
-              variant="outlined"
-              value={newResource.name}
-              onChange={(e) => setNewResource({ ...newResource, name: e.target.value })}
-              required
-            />
-            <TextField
-              label="Capacity"
-              type="number"
-              variant="outlined"
-              value={newResource.capacity}
-              onChange={(e) => setNewResource({ ...newResource, capacity: parseInt(e.target.value) })}
-              required
-            />
-            <Button type="submit" variant="contained" color="primary">
-              Add Resource
-            </Button>
-          </Box>
-        </Paper>
-        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" component="h2" gutterBottom>
             Checkout/Check-in Resources
           </Typography>
           <Box component="form" onSubmit={handleCheckout} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
+              select
               label="Hardware Set"
               variant="outlined"
               value={checkoutData.hw_set}
               onChange={(e) => setCheckoutData({ ...checkoutData, hw_set: e.target.value })}
               required
-            />
+              SelectProps={{
+                native: true,
+              }}
+            >
+              <option value="">Select a hardware set</option>
+              {resources.map((resource) => (
+                <option key={resource._id} value={resource.name}>
+                  {resource.name}
+                </option>
+              ))}
+            </TextField>
             <TextField
               label="Quantity"
               type="number"

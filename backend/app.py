@@ -15,9 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
-#CORS(app)  # Enable CORS for all routes
-#CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}})
-CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app"}}, supports_credentials=True)
 
 # Configuration
 mongo_uri = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/haaspoc?retryWrites=true&w=majority&appName=OneMillion'
@@ -33,26 +31,23 @@ app.config['MONGO_URI'] = mongo_uri
 app.config['JWT_SECRET_KEY'] = jwt_secret_key
 
 # Initialize extensions
-mongo = None
-try:
-    # Use MongoClient directly instead of PyMongo
-    client = MongoClient(mongo_uri)
-    db = client.get_database('haas_poc')  # Specify the database name here
-    # Test the connection
-    db.command('ping')
-    app.logger.info("MongoDB connection successful")
-    mongo = PyMongo(app)
-except ConnectionFailure as e:
-    app.logger.error(f"MongoDB connection failed: {str(e)}")
-    raise
-except Exception as e:
-    app.logger.error(f"Unexpected error when connecting to MongoDB: {str(e)}")
-    raise
-
-# Initialize extensions
 mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
+
+def initialize_resources():
+    resources = mongo.db.resources
+    if resources.count_documents({}) == 0:
+        initial_resources = [
+            {"name": "HW Set1", "capacity": 200, "available": 200},
+            {"name": "HW Set2", "capacity": 500, "available": 500}
+        ]
+        resources.insert_many(initial_resources)
+        app.logger.info("Initialized default resources")
+
+# Call this function when the app starts
+with app.app_context():
+    initialize_resources()
 
 # User routes
 @app.route('/api/register', methods=['POST'])
@@ -113,13 +108,6 @@ def login():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 401
 
-def build_preflight_response():
-    response = make_response()
-    response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
-    response.headers.add('Access-Control-Allow-Headers', "*")
-    response.headers.add('Access-Control-Allow-Methods', "*")
-    return response
-
 # Project routes
 @app.route('/api/projects', methods=['POST'])
 @jwt_required()
@@ -150,18 +138,6 @@ def get_projects():
     return jsonify([{**project, '_id': str(project['_id'])} for project in user_projects]), 200
 
 # Resource routes
-@app.route('/api/resources', methods=['POST'])
-@jwt_required()
-def create_resource():
-    data = request.json
-    new_resource = {
-        'name': data['name'],
-        'capacity': data['capacity'],
-        'available': data['capacity']
-    }
-    result = mongo.db.resources.insert_one(new_resource)
-    return jsonify({'message': 'Resource created', 'id': str(result.inserted_id)}), 201
-
 @app.route('/api/resources', methods=['GET'])
 @jwt_required()
 def get_resources():
@@ -177,7 +153,7 @@ def get_resources():
 @jwt_required()
 def checkout_resource():
     data = request.json
-    resource = mongo.db.resources.find_one({'name': data['name']})
+    resource = mongo.db.resources.find_one({'name': data['hw_set']})
     if not resource:
         return jsonify({'message': 'Resource not found'}), 404
     if resource['available'] < data['quantity']:
@@ -202,7 +178,7 @@ def checkout_resource():
 @jwt_required()
 def checkin_resource():
     data = request.json
-    resource = mongo.db.resources.find_one({'name': data['name']})
+    resource = mongo.db.resources.find_one({'name': data['hw_set']})
     if not resource:
         return jsonify({'message': 'Resource not found'}), 404
     
