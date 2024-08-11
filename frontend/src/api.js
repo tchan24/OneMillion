@@ -28,8 +28,8 @@ export const getProjects = () => api.get('/projects');
 export const createProject = (project) => api.post('/projects', project);
 export const getResources = () => api.get('/resources');
 export const createResource = (name, capacity) => api.post('/resources', { name, capacity });
-export const checkoutResource = (name, quantity, project_id) => api.post('/resources/checkout', { name, quantity, project_id });
-export const checkinResource = (name, quantity, project_id) => api.post('/resources/checkin', { name, quantity, project_id });
+export const checkoutResources = (name, quantity, project_id) => api.post('/resources/checkout', { name, quantity, project_id });
+export const checkinResources = (name, quantity, project_id) => api.post('/resources/checkin', { name, quantity, project_id });
 export const getProjectResources = (project_id) => api.get(`/projects/${project_id}/resources`);
 
 export default api;
