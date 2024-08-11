@@ -3,7 +3,7 @@ import axios from 'axios';
    //const API_URL = 'https://onemillionhaas-006c54c385ff.herokuapp.com/api';
    //const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
    //const API_URL = process.env.REACT_APP_API_URL || 'https://onemillionhaas-b249dc0f125a.herokuapp.com/';
-   const API_URL = 'https://onemillionhaas-b249dc0f125a.herokuapp.com/';
+   const API_URL = 'https://onemillionhaas-b249dc0f125a.herokuapp.com/api';
 
 
    const api = axios.create({
@@ -11,6 +11,7 @@ import axios from 'axios';
      headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: true,  // Important for CORS with credentials
    });
 
    // Add token to requests

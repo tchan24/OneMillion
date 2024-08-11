@@ -16,7 +16,8 @@ load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
 #CORS(app)  # Enable CORS for all routes
-CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}})
+#CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}})
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Configuration
 mongo_uri = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/haaspoc?retryWrites=true&w=majority&appName=OneMillion'
@@ -84,6 +85,32 @@ def register():
         app.logger.error(f"Unexpected error during registration: {str(e)}")
         return jsonify({'message': 'Registration failed due to an unexpected error'}), 500
 
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
+def login():
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type, Authorization")
+        response.headers.add('Access-Control-Allow-Methods', "GET, POST, PUT, DELETE, OPTIONS")
+        return response
+    elif request.method == 'POST':
+        users = mongo.db.users
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        user = users.find_one({'username': username})
+        
+        if user and bcrypt.check_password_hash(user['password'], password):
+            access_token = create_access_token(identity=str(user['_id']))
+            response = jsonify({'access_token': access_token})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
+        
+        response = jsonify({'message': 'Invalid username or password'})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 401
+
+'''
 @app.route('/api/login', methods=['POST'])
 def login():
     if request.method == 'OPTIONS':
@@ -116,6 +143,7 @@ def login():
         except Exception as e:
             app.logger.error(f"Unexpected error during login: {str(e)}")
             return jsonify({'message': 'Login failed due to an unexpected error'}), 500
+'''
 
 def build_preflight_response():
     response = make_response()
