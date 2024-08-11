@@ -27,8 +27,9 @@ export const register = (username, password) => api.post('/register', { username
 export const getProjects = () => api.get('/projects');
 export const createProject = (project) => api.post('/projects', project);
 export const getResources = () => api.get('/resources');
-export const addResource = (resource) => api.post('/api/resources', resource);
-export const checkoutResources = (hw_set, quantity) => api.post('/resources/checkout', { hw_set, quantity });
-export const checkinResources = (hw_set, quantity) => api.post('/resources/checkin', { hw_set, quantity });
+export const createResource = (name, capacity) => api.post('/resources', { name, capacity });
+export const checkoutResource = (name, quantity, project_id) => api.post('/resources/checkout', { name, quantity, project_id });
+export const checkinResource = (name, quantity, project_id) => api.post('/resources/checkin', { name, quantity, project_id });
+export const getProjectResources = (project_id) => api.get(`/projects/${project_id}/resources`);
 
 export default api;

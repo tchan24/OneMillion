@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getResources, addResource, checkoutResources, checkinResources } from '../api';
-import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper } from '@mui/material';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Alert } from '@mui/material';
 import Navbar from './navbar';
 
 const ResourceManagement = ({ onLogout }) => {
   const [resources, setResources] = useState([]);
   const [newResource, setNewResource] = useState({ name: '', capacity: 0 });
-  const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0 });
+  const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0, project_id: '' });
+  const [alert, setAlert] = useState({ show: false, message: '', severity: 'info' });
 
   useEffect(() => {
     fetchResources();
@@ -18,6 +19,7 @@ const ResourceManagement = ({ onLogout }) => {
       setResources(response.data);
     } catch (error) {
       console.error('Error fetching resources:', error);
+      showAlert('Error fetching resources', 'error');
     }
   };
 
@@ -27,37 +29,53 @@ const ResourceManagement = ({ onLogout }) => {
       await addResource(newResource);
       setNewResource({ name: '', capacity: 0 });
       fetchResources();
+      showAlert('Resource added successfully', 'success');
     } catch (error) {
       console.error('Error adding resource:', error);
+      showAlert('Error adding resource', 'error');
     }
   };
 
   const handleCheckout = async (e) => {
     e.preventDefault();
     try {
-      await checkoutResources(checkoutData.hw_set, checkoutData.quantity);
-      setCheckoutData({ hw_set: '', quantity: 0 });
+      await checkoutResources(checkoutData.hw_set, checkoutData.quantity, checkoutData.project_id);
+      setCheckoutData({ hw_set: '', quantity: 0, project_id: '' });
       fetchResources();
+      showAlert('Resources checked out successfully', 'success');
     } catch (error) {
       console.error('Error checking out resource:', error);
+      showAlert('Error checking out resource', 'error');
     }
   };
 
   const handleCheckin = async (e) => {
     e.preventDefault();
     try {
-      await checkinResources(checkoutData.hw_set, checkoutData.quantity);
-      setCheckoutData({ hw_set: '', quantity: 0 });
+      await checkinResources(checkoutData.hw_set, checkoutData.quantity, checkoutData.project_id);
+      setCheckoutData({ hw_set: '', quantity: 0, project_id: '' });
       fetchResources();
+      showAlert('Resources checked in successfully', 'success');
     } catch (error) {
       console.error('Error checking in resource:', error);
+      showAlert('Error checking in resource', 'error');
     }
+  };
+
+  const showAlert = (message, severity) => {
+    setAlert({ show: true, message, severity });
+    setTimeout(() => setAlert({ show: false, message: '', severity: 'info' }), 5000);
   };
 
   return (
     <>
       <Navbar onLogout={onLogout} />
       <Container maxWidth="md" sx={{ mt: 4 }}>
+        {alert.show && (
+          <Alert severity={alert.severity} sx={{ mb: 2 }}>
+            {alert.message}
+          </Alert>
+        )}
         <Typography variant="h4" component="h1" gutterBottom>
           Resource Management
         </Typography>
@@ -104,6 +122,13 @@ const ResourceManagement = ({ onLogout }) => {
               variant="outlined"
               value={checkoutData.quantity}
               onChange={(e) => setCheckoutData({ ...checkoutData, quantity: parseInt(e.target.value) })}
+              required
+            />
+            <TextField
+              label="Project ID"
+              variant="outlined"
+              value={checkoutData.project_id}
+              onChange={(e) => setCheckoutData({ ...checkoutData, project_id: e.target.value })}
               required
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
