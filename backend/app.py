@@ -17,7 +17,7 @@ load_dotenv()  # Load environment variables from .env file
 app = Flask(__name__)
 #CORS(app)  # Enable CORS for all routes
 #CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}})
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": "https://onemillionhaas.netlify.app/"}}, supports_credentials=True)
 
 # Configuration
 mongo_uri = 'mongodb+srv://atownz1:OneMillion100Beers@onemillion.opehmx7.mongodb.net/haaspoc?retryWrites=true&w=majority&appName=OneMillion'
@@ -89,9 +89,10 @@ def register():
 def login():
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
         response.headers.add('Access-Control-Allow-Headers', "Content-Type, Authorization")
         response.headers.add('Access-Control-Allow-Methods', "GET, POST, PUT, DELETE, OPTIONS")
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     elif request.method == 'POST':
         users = mongo.db.users
@@ -103,11 +104,13 @@ def login():
         if user and bcrypt.check_password_hash(user['password'], password):
             access_token = create_access_token(identity=str(user['_id']))
             response = jsonify({'access_token': access_token})
-            response.headers.add("Access-Control-Allow-Origin", "*")
+            response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         response = jsonify({'message': 'Invalid username or password'})
-        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Origin", "https://onemillionhaas.netlify.app")
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 401
 
 '''
@@ -240,4 +243,4 @@ def checkin_resources():
     return jsonify({'message': 'Resources checked in successfully'}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
