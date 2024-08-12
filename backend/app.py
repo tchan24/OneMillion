@@ -8,6 +8,7 @@ import os
 import logging
 from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo import MongoClient
+from bson import ObjectId
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -118,11 +119,16 @@ def create_project():
     project_id = request.json.get('projectID')
     user_id = get_jwt_identity()
     
+    existing_project = projects.find_one({'projectID': project_id})
+    if existing_project:
+        return jsonify({'message': 'A project with this ID already exists'}), 400
+
     project = {
         'name': name,
         'description': description,
         'projectID': project_id,
-        'user_id': user_id
+        'user_id': user_id,
+        'members': [user_id]
     }
     
     result = projects.insert_one(project)
@@ -133,9 +139,55 @@ def create_project():
 def get_projects():
     projects = mongo.db.projects
     user_id = get_jwt_identity()
-    user_projects = list(projects.find({'user_id': user_id}))
+    user_projects = list(projects.find({'members': user_id}))
     
     return jsonify([{**project, '_id': str(project['_id'])} for project in user_projects]), 200
+
+@app.route('/api/all-projects', methods=['GET'])
+@jwt_required()
+def get_all_projects():
+    projects = mongo.db.projects
+    all_projects = list(projects.find())
+    return jsonify([{**project, '_id': str(project['_id'])} for project in all_projects]), 200
+
+@app.route('/api/join-project', methods=['POST'])
+@jwt_required()
+def join_project():
+    user_id = get_jwt_identity()
+    project_id = request.json.get('project_id')
+    
+    project = mongo.db.projects.find_one({'_id': ObjectId(project_id)})
+    if not project:
+        return jsonify({'message': 'Project not found'}), 404
+    
+    if user_id in project.get('members', []):
+        return jsonify({'message': 'You are already a member of this project'}), 400
+
+    mongo.db.projects.update_one(
+        {'_id': ObjectId(project_id)},
+        {'$addToSet': {'members': user_id}}
+    )
+    
+    return jsonify({'message': 'Joined project successfully'}), 200
+
+@app.route('/api/projects/<project_id>/resources', methods=['GET'])
+@jwt_required()
+def get_project_resources(project_id):
+    user_id = get_jwt_identity()
+    project = mongo.db.projects.find_one({'_id': ObjectId(project_id)})
+    
+    if not project or user_id not in project.get('members', []):
+        return jsonify({'message': 'Unauthorized or project not found'}), 403
+
+    checkouts = mongo.db.checkouts.find({'project_id': project_id})
+    project_resources = {}
+    for checkout in checkouts:
+        resource = mongo.db.resources.find_one({'_id': checkout['resource_id']})
+        if resource['name'] not in project_resources:
+            project_resources[resource['name']] = 0
+        project_resources[resource['name']] += checkout['quantity']
+    
+    return jsonify([{'name': name, 'checked_out': quantity} for name, quantity in project_resources.items()]), 200
 
 # Resource routes
 @app.route('/api/resources', methods=['GET'])
@@ -197,34 +249,15 @@ def checkin_resource():
     
     return jsonify({'message': 'Check-in successful'}), 200
 
-@app.route('/api/all-projects', methods=['GET'])
-@jwt_required()
-def get_all_projects():
-    projects = mongo.db.projects
-    all_projects = list(projects.find())
-    return jsonify([{**project, '_id': str(project['_id'])} for project in all_projects]), 200
-
-@app.route('/api/join-project', methods=['POST'])
-@jwt_required()
-def join_project():
-    user_id = get_jwt_identity()
-    project_id = request.json.get('project_id')
-    
-    project = mongo.db.projects.find_one({'_id': project_id})
-    if not project:
-        return jsonify({'message': 'Project not found'}), 404
-    
-    if user_id not in project.get('members', []):
-        mongo.db.projects.update_one(
-            {'_id': project_id},
-            {'$addToSet': {'members': user_id}}
-        )
-    
-    return jsonify({'message': 'Joined project successfully'}), 200
-
 @app.route('/api/projects/<project_id>/resources', methods=['GET'])
 @jwt_required()
 def get_project_resources(project_id):
+    user_id = get_jwt_identity()
+    project = mongo.db.projects.find_one({'_id': ObjectId(project_id)})
+    
+    if not project or user_id not in project.get('members', []):
+        return jsonify({'message': 'Unauthorized or project not found'}), 403
+
     checkouts = mongo.db.checkouts.find({'project_id': project_id})
     project_resources = {}
     for checkout in checkouts:

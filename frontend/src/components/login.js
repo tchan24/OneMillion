@@ -1,30 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Button, Typography, Box, Container, Tab, Tabs } from '@mui/material';
+import { TextField, Button, Typography, Box, Container, Tab, Tabs, Alert } from '@mui/material';
 import { login, register } from '../api';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       if (isLogin) {
         const response = await login(username, password);
-        console.log('Login response:', response);
         localStorage.setItem('token', response.data.access_token);
         onLogin();
         navigate('/dashboard');
       } else {
         await register(username, password);
-        setIsLogin(true);  // Switch to login tab after successful registration
+        setIsLogin(true);
+        setError('Registration successful. Please log in.');
       }
     } catch (error) {
       console.error(isLogin ? 'Login failed:' : 'Registration failed:', error);
-      // Here you might want to show an error message to the user
+      setError(error.response?.data?.message || 'An error occurred. Please try again.');
     }
   };
 
@@ -45,6 +47,7 @@ const Login = ({ onLogin }) => {
           <Tab label="Login" />
           <Tab label="Register" />
         </Tabs>
+        {error && <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>}
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
           <TextField
             margin="normal"

@@ -6,10 +6,11 @@ import Navbar from './navbar';
 const ResourceManagement = ({ onLogout }) => {
   const [resources, setResources] = useState([]);
   const [checkoutData, setCheckoutData] = useState({ hw_set: '', quantity: 0, project_id: '' });
-  const [alert, setAlert] = useState({ show: false, message: '', severity: 'info' });
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [projectResources, setProjectResources] = useState([]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchResources();
@@ -27,8 +28,7 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getResources();
       setResources(response.data);
     } catch (error) {
-      console.error('Error fetching resources:', error);
-      showAlert('Error fetching resources', 'error');
+      setError('Error fetching resources');
     }
   };
 
@@ -37,7 +37,7 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getProjects();
       setProjects(response.data);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      setError('Error fetching projects');
     }
   };
 
@@ -46,7 +46,7 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getProjectResources(projectId);
       setProjectResources(response.data);
     } catch (error) {
-      console.error('Error fetching project resources:', error);
+      setError('Error fetching project resources');
     }
   };
 
@@ -60,38 +60,31 @@ const ResourceManagement = ({ onLogout }) => {
       showAlert('Resources checked out successfully', 'success');
     } catch (error) {
       console.error('Error checking out resource:', error);
-      showAlert('Error checking out resource', 'error');
+      showAlert(error.response?.data?.message || 'Error checking out resource. Insufficient quantity may be available.', 'error');
     }
   };
 
   const handleCheckin = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     try {
       await checkinResources(checkoutData.hw_set, checkoutData.quantity, selectedProject);
       setCheckoutData({ hw_set: '', quantity: 0 });
       fetchResources();
       fetchProjectResources(selectedProject);
-      showAlert('Resources checked in successfully', 'success');
+      setSuccess('Resources checked in successfully');
     } catch (error) {
-      console.error('Error checking in resource:', error);
-      showAlert('Error checking in resource', 'error');
+      setError(error.response?.data?.message || 'Error checking in resources');
     }
-  };
-
-  const showAlert = (message, severity) => {
-    setAlert({ show: true, message, severity });
-    setTimeout(() => setAlert({ show: false, message: '', severity: 'info' }), 5000);
   };
 
   return (
     <>
       <Navbar onLogout={onLogout} />
       <Container maxWidth="md" sx={{ mt: 4 }}>
-        {alert.show && (
-          <Alert severity={alert.severity} sx={{ mb: 2 }}>
-            {alert.message}
-          </Alert>
-        )}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
         <Typography variant="h4" component="h1" gutterBottom>
           Resource Management
         </Typography>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getProjects, createProject, getAllProjects, joinProject } from '../api';
-import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Select, MenuItem } from '@mui/material';
+import { Container, Typography, TextField, Button, List, ListItem, ListItemText, Box, Paper, Select, MenuItem, Alert } from '@mui/material';
 import Navbar from './navbar';
 
 const ProjectManagement = ({ onLogout }) => {
@@ -8,6 +8,8 @@ const ProjectManagement = ({ onLogout }) => {
   const [allProjects, setAllProjects] = useState([]);
   const [newProject, setNewProject] = useState({ name: '', description: '', projectID: '' });
   const [selectedProject, setSelectedProject] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchProjects();
@@ -19,7 +21,7 @@ const ProjectManagement = ({ onLogout }) => {
       const response = await getProjects();
       setProjects(response.data);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      setError('Error fetching projects');
     }
   };
 
@@ -28,29 +30,35 @@ const ProjectManagement = ({ onLogout }) => {
       const response = await getAllProjects();
       setAllProjects(response.data);
     } catch (error) {
-      console.error('Error fetching all projects:', error);
+      setError('Error fetching all projects');
     }
   };
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     try {
       await createProject(newProject);
       setNewProject({ name: '', description: '', projectID: '' });
       fetchProjects();
       fetchAllProjects();
+      setSuccess('Project created successfully');
     } catch (error) {
-      console.error('Error creating project:', error);
+      setError(error.response?.data?.message || 'Error creating project. Project ID may already exist.');
     }
   };
 
   const handleJoinProject = async () => {
+    setError('');
+    setSuccess('');
     try {
       await joinProject(selectedProject);
       fetchProjects();
       setSelectedProject('');
+      setSuccess('Joined project successfully');
     } catch (error) {
-      console.error('Error joining project:', error);
+      setError(error.response?.data?.message || 'Error joining project');
     }
   };
 
@@ -58,6 +66,8 @@ const ProjectManagement = ({ onLogout }) => {
     <>
       <Navbar onLogout={onLogout} />
       <Container maxWidth="md" sx={{ mt: 4 }}>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
         <Typography variant="h4" component="h1" gutterBottom>
           Project Management
         </Typography>
@@ -105,7 +115,7 @@ const ProjectManagement = ({ onLogout }) => {
             >
               <MenuItem value="" disabled>Select a project to join</MenuItem>
               {allProjects.map((project) => (
-                <MenuItem key={project._id} value={project._id}>{project.name}</MenuItem>
+                <MenuItem key={project._id} value={project._id}>{project.name} (ID: {project.projectID})</MenuItem>
               ))}
             </Select>
             <Button onClick={handleJoinProject} variant="contained" color="secondary" disabled={!selectedProject}>
