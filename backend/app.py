@@ -249,24 +249,5 @@ def checkin_resource():
     
     return jsonify({'message': 'Check-in successful'}), 200
 
-@app.route('/api/projects/<project_id>/resources', methods=['GET'])
-@jwt_required()
-def get_project_resources(project_id):
-    user_id = get_jwt_identity()
-    project = mongo.db.projects.find_one({'_id': ObjectId(project_id)})
-    
-    if not project or user_id not in project.get('members', []):
-        return jsonify({'message': 'Unauthorized or project not found'}), 403
-
-    checkouts = mongo.db.checkouts.find({'project_id': project_id})
-    project_resources = {}
-    for checkout in checkouts:
-        resource = mongo.db.resources.find_one({'_id': checkout['resource_id']})
-        if resource['name'] not in project_resources:
-            project_resources[resource['name']] = 0
-        project_resources[resource['name']] += checkout['quantity']
-    
-    return jsonify([{'name': name, 'checked_out': quantity} for name, quantity in project_resources.items()]), 200
-
 if __name__ == '__main__':
     app.run(debug=False)
