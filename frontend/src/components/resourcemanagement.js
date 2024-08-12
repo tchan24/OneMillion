@@ -9,8 +9,7 @@ const ResourceManagement = ({ onLogout }) => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [projectResources, setProjectResources] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [alert, setAlert] = useState({ show: false, message: '', severity: 'info' });
 
   useEffect(() => {
     fetchResources();
@@ -28,7 +27,8 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getResources();
       setResources(response.data);
     } catch (error) {
-      setError('Error fetching resources');
+      console.error('Error fetching resources:', error);
+      showAlert('Error fetching resources', 'error');
     }
   };
 
@@ -37,7 +37,8 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getProjects();
       setProjects(response.data);
     } catch (error) {
-      setError('Error fetching projects');
+      console.error('Error fetching projects:', error);
+      showAlert('Error fetching projects', 'error');
     }
   };
 
@@ -46,7 +47,8 @@ const ResourceManagement = ({ onLogout }) => {
       const response = await getProjectResources(projectId);
       setProjectResources(response.data);
     } catch (error) {
-      setError('Error fetching project resources');
+      console.error('Error fetching project resources:', error);
+      showAlert('Error fetching project resources', 'error');
     }
   };
 
@@ -66,25 +68,32 @@ const ResourceManagement = ({ onLogout }) => {
 
   const handleCheckin = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     try {
       await checkinResources(checkoutData.hw_set, checkoutData.quantity, selectedProject);
       setCheckoutData({ hw_set: '', quantity: 0 });
       fetchResources();
       fetchProjectResources(selectedProject);
-      setSuccess('Resources checked in successfully');
+      showAlert('Resources checked in successfully', 'success');
     } catch (error) {
-      setError(error.response?.data?.message || 'Error checking in resources');
+      console.error('Error checking in resource:', error);
+      showAlert(error.response?.data?.message || 'Error checking in resource', 'error');
     }
+  };
+
+  const showAlert = (message, severity) => {
+    setAlert({ show: true, message, severity });
+    setTimeout(() => setAlert({ show: false, message: '', severity: 'info' }), 5000);
   };
 
   return (
     <>
       <Navbar onLogout={onLogout} />
       <Container maxWidth="md" sx={{ mt: 4 }}>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+        {alert.show && (
+          <Alert severity={alert.severity} sx={{ mb: 2 }}>
+            {alert.message}
+          </Alert>
+        )}
         <Typography variant="h4" component="h1" gutterBottom>
           Resource Management
         </Typography>
