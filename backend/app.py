@@ -211,20 +211,25 @@ def checkout_resource():
     if resource['available'] < data['quantity']:
         return jsonify({'message': 'Not enough resources available'}), 400
     
+    new_available = resource['available'] - data['quantity']
+    
     mongo.db.resources.update_one(
         {'_id': resource['_id']},
-        {'$inc': {'available': -data['quantity']}}
+        {'$set': {'available': new_available}}
     )
     
-    # Record the checkout in a separate collection
-    mongo.db.checkouts.insert_one({
-        'user_id': get_jwt_identity(),
-        'resource_id': resource['_id'],
-        'project_id': data['project_id'],
-        'quantity': data['quantity']
-    })
+    # Update or create the checkout record
+    mongo.db.checkouts.update_one(
+        {
+            'user_id': get_jwt_identity(),
+            'resource_id': resource['_id'],
+            'project_id': data['project_id']
+        },
+        {'$inc': {'quantity': data['quantity']}},
+        upsert=True
+    )
     
-    return jsonify({'message': 'Checkout successful'}), 200
+    return jsonify({'message': 'Checkout successful', 'new_available': new_available}), 200
 
 @app.route('/api/resources/checkin', methods=['POST'])
 @jwt_required()
@@ -234,20 +239,35 @@ def checkin_resource():
     if not resource:
         return jsonify({'message': 'Resource not found'}), 404
     
+    # Check if the project has checked out this resource
+    checkout = mongo.db.checkouts.find_one({
+        'user_id': get_jwt_identity(),
+        'resource_id': resource['_id'],
+        'project_id': data['project_id']
+    })
+    
+    if not checkout or checkout['quantity'] < data['quantity']:
+        return jsonify({'message': 'Cannot check in more resources than checked out'}), 400
+    
+    # Calculate the new available amount, ensuring it doesn't exceed capacity
+    new_available = min(resource['available'] + data['quantity'], resource['capacity'])
+    
     mongo.db.resources.update_one(
         {'_id': resource['_id']},
-        {'$inc': {'available': data['quantity']}}
+        {'$set': {'available': new_available}}
     )
     
     # Update or remove the checkout record
-    mongo.db.checkouts.delete_one({
-        'user_id': get_jwt_identity(),
-        'resource_id': resource['_id'],
-        'project_id': data['project_id'],
-        'quantity': data['quantity']
-    })
+    new_checkout_quantity = checkout['quantity'] - data['quantity']
+    if new_checkout_quantity > 0:
+        mongo.db.checkouts.update_one(
+            {'_id': checkout['_id']},
+            {'$set': {'quantity': new_checkout_quantity}}
+        )
+    else:
+        mongo.db.checkouts.delete_one({'_id': checkout['_id']})
     
-    return jsonify({'message': 'Check-in successful'}), 200
+    return jsonify({'message': 'Check-in successful', 'new_available': new_available}), 200
 
 if __name__ == '__main__':
     app.run(debug=False)
